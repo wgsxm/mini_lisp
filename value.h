@@ -2,11 +2,14 @@
 #define VALUE_H
 #include <memory>
 #include <string>
+#include<iostream>
 class Value {
 public:
     virtual ~Value() = default;
     virtual std::string toString() const = 0;
 };
+using ValuePtr = std::shared_ptr<Value>;
+std::ostream& operator<<(std::ostream& os, const Value& value);
 class BooleanValue : public Value {
 public:
     BooleanValue(bool value);

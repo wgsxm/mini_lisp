@@ -1,6 +1,13 @@
 #include "./value.h"
 #include <cmath>
 #include <iomanip>
+#include<iostream>
+#include <iomanip>
+#include <sstream>
+std::ostream& operator<<(std::ostream& os,const Value& value) {
+    os <<value.toString();
+    return os;
+}
 BooleanValue::BooleanValue(bool value) : m_value(value) {}
 std::string BooleanValue::toString() const {
     return m_value ? "#t" : "#f";
@@ -14,8 +21,10 @@ std::string NumericValue::toString() const  {
     }
 }
 StringValue::StringValue(const std::string& value) : m_value(value) {}
-std::string StringValue::toString() const  {
-    return std::string("\"") + m_value + std::string("\"");
+std::string StringValue::toString() const {
+    std::stringstream ss;
+    ss<<std::quoted(m_value);
+    return ss.str();
 }
 std::string NilValue::toString() const {
     return std::string("()");
