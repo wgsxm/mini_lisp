@@ -5,6 +5,7 @@
 #include"./parser.h"
 #include "./rjsj_test.hpp"
 #include"eval_env.h"
+#include"builtins.h"
 struct TestCtx {
     EvalEnv env;
     std::string eval(std::string input) {
@@ -16,7 +17,7 @@ struct TestCtx {
     }
 };
 int main() {
-    RJSJ_TEST(TestCtx, Lv2, Lv3);
+    RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4);
     while (true) {
         try {
             std::cout << ">>> " ;

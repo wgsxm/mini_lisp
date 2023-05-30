@@ -5,7 +5,36 @@
 #include <iomanip>
 #include <sstream>
 #include<vector>
-std::ostream& operator<<(std::ostream& os,const Value& value) {
+bool Value::isNil() const {
+    return false;
+}
+bool Value::isSelfEvaluating() const {
+    return false;
+}
+bool Value::isPair() const {
+    return false;
+}
+bool Value::isNumber() const {
+    return false;
+}
+std::optional<double> Value::asNumber() const {
+    return std::nullopt;
+}
+std::optional<std::string> Value::asSymbol() const {
+    return std::nullopt;
+}
+std::vector<ValuePtr> Value::toVector() const {
+    std::vector<ValuePtr> ret;
+    return ret;
+}
+ValuePtr Value::left() const {
+    return std::make_shared<NilValue>();
+}
+ValuePtr Value::right() const {
+    return std::make_shared<NilValue>();
+}
+std::ostream& operator<<(
+    std::ostream& os, const Value& value) {
     os <<value.toString();
     return os;
 }
@@ -27,7 +56,13 @@ std::string NumericValue::toString() const  {
 bool NumericValue::isSelfEvaluating() const {
     return true;
 }
-StringValue::StringValue(const std::string& value) : m_value(value) {}
+bool NumericValue::isNumber() const {
+    return true;
+}
+std::optional<double> NumericValue::asNumber() const {
+    return this->m_value;
+}
+    StringValue::StringValue(const std::string& value) : m_value(value) {}
 std::string StringValue::toString() const {
     std::stringstream ss;
     ss<<std::quoted(m_value);
@@ -65,7 +100,13 @@ std::string PairValue::toString() const {
     }
     return result + std::string(")");
 }
-bool PairValue::isPair() const{
+ValuePtr PairValue::left() const {
+    return m_left;
+}
+ValuePtr PairValue::right() const {
+    return m_right;
+}
+bool PairValue::isPair() const {
     return true;
 }
 std::vector<ValuePtr> PairValue::toVector() const {
@@ -77,6 +118,13 @@ std::vector<ValuePtr> PairValue::toVector() const {
         ret.push_back(pair.m_left);
         ptr = pair.m_right;
     }
-    ret.push_back(ptr);
+    if (typeid(*ptr) != typeid(NilValue)) ret.push_back(ptr);
     return ret;
+}
+BuiltinProcValue::BuiltinProcValue(BuiltinFuncType* func) : func{func} {}
+std::string BuiltinProcValue::toString() const {
+    return "#<procedure>";
+}
+BuiltinFuncType* BuiltinProcValue::get_func() const {
+    return this->func;
 }
