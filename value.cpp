@@ -5,6 +5,18 @@
 #include <iomanip>
 #include <sstream>
 #include<vector>
+ValuePtr vec2pair(std::vector<ValuePtr> vec) {
+    if (vec.empty()) {
+        return std::make_shared<NilValue>();
+    } else {
+        auto left = vec[0];
+        vec.erase(vec.begin());
+        return std::make_shared<PairValue>(left, vec2pair(vec));
+    }
+}
+bool Value::isTrue()const {
+    return true;
+}
 bool Value::isNil() const {
     return false;
 }
@@ -44,6 +56,9 @@ std::string BooleanValue::toString() const {
 }
 bool BooleanValue::isSelfEvaluating() const {
     return true;
+}
+bool BooleanValue::isTrue() const {
+    return m_value;
 }
 NumericValue::NumericValue(double value) : m_value(value) {}
 std::string NumericValue::toString() const  {
@@ -128,3 +143,9 @@ std::string BuiltinProcValue::toString() const {
 BuiltinFuncType* BuiltinProcValue::get_func() const {
     return this->func;
 }
+std::string LambdaValue::toString() const{
+    return "#<procedure>";
+}
+LambdaValue::LambdaValue(std::vector<std::string> params,
+                         std::vector<ValuePtr> body)
+    : params{params}, body{body} {}

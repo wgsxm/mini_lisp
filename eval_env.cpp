@@ -6,11 +6,15 @@
 #include <iterator>
 #include"value.h"
 #include "./builtins.h"
+#include"forms.h"
 using namespace std::literals; // 使用 s 后缀
 std::unordered_map<std::string, ValuePtr> SymbolMap;
 EvalEnv::EvalEnv() {
     SymbolMap.insert_or_assign("+", std::make_shared<BuiltinProcValue>(&add));
     SymbolMap.insert_or_assign("print", std::make_shared<BuiltinProcValue>(&print));
+}
+void EvalEnv::addObject(std::string name, ValuePtr ptr) {
+    SymbolMap.insert_or_assign(name, ptr);
 }
 std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
     std::vector<ValuePtr> result;
@@ -35,19 +39,17 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         throw LispError("Evaluating nil is prohibited.");
     } else if (expr->isPair()) {
         std::vector<ValuePtr> v = expr->toVector();
-        if (v[0]->asSymbol() == "define"s) {
-            if (auto name = v[1]->asSymbol()) {
-               // 将(*name, v[2]) 添加到符号表中;
-                SymbolMap.insert_or_assign(name.value(), this->eval(v[2]));
-               return std::make_shared<NilValue>();
+        if (auto name = expr->left()->asSymbol()) {
+            if (SPECIAL_FORMS.count(*name)>0) {
+                return SPECIAL_FORMS.find(*name)->second(
+                    expr->right()->toVector(), *this);
             } else {
-                throw LispError("Malformed define.");
+                ValuePtr proc = this->eval(v[0]);
+                std::vector<ValuePtr> args = evalList(expr->right());
+                return this->apply(proc,
+                                   args);  // 最后用 EvalEnv::apply 实现调用
             }
-        } else {
-            ValuePtr proc = this->eval(v[0]);
-            std::vector<ValuePtr> args = evalList(expr->right());
-            return this->apply(proc, args);  // 最后用 EvalEnv::apply 实现调用
-        }
+        } 
     } else if (auto name = expr->asSymbol()) {
         auto value = SymbolMap.find(name.value());
         if (value!=SymbolMap.end()) {

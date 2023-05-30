@@ -14,6 +14,7 @@ public:
     virtual std::string toString() const = 0;
     virtual bool isSelfEvaluating() const;
     virtual bool isNil() const;
+    virtual bool isTrue() const;
     virtual bool isPair() const;
     virtual bool isNumber() const;
     virtual std::optional<std::string> asSymbol() const;
@@ -23,11 +24,13 @@ public:
     virtual ValuePtr right() const;
 };
 std::ostream& operator<<(std::ostream& os, const Value& value);
+ValuePtr vec2pair(std::vector<ValuePtr>);
 class BooleanValue : public Value {
 public:
     BooleanValue(bool value);
     std::string toString() const override;
     bool isSelfEvaluating() const override;
+    bool isTrue() const override;
 
 private:
     const bool m_value;
@@ -88,5 +91,14 @@ public:
     BuiltinProcValue(BuiltinFuncType* func);
     std::string toString() const override;
     BuiltinFuncType* get_func() const;
+};
+class LambdaValue : public Value {
+private:
+    std::vector<std::string> params;
+    std::vector<ValuePtr> body;
+    // [...]
+public:
+    LambdaValue(std::vector<std::string>, std::vector<ValuePtr>);
+    std::string toString() const override;  // 如前所述，返回 #<procedure> 即可
 };
 #endif
