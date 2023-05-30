@@ -1,6 +1,6 @@
 #ifndef BUILTINS_H
 #define BUILTINS_H
 #include"value.h"
-ValuePtr add(const std::vector<ValuePtr>& params);
-ValuePtr print(const std::vector<ValuePtr>& params);
+#include<unordered_map>
+extern const std::unordered_map<std::string, BuiltinFuncType*> BUILT_INS;
 #endif  // !BUILTINS_H

@@ -6,6 +6,7 @@
 #include<optional>
 #include"error.h"
 #include<vector>
+class EvalEnv;
 class Value;
 using ValuePtr = std::shared_ptr<Value>;
 class Value {
@@ -96,9 +97,12 @@ class LambdaValue : public Value {
 private:
     std::vector<std::string> params;
     std::vector<ValuePtr> body;
+    std::shared_ptr<EvalEnv> parent=nullptr;
     // [...]
 public:
-    LambdaValue(std::vector<std::string>, std::vector<ValuePtr>);
+    LambdaValue(std::vector<std::string>, std::vector<ValuePtr>,
+                std::shared_ptr<EvalEnv>);
     std::string toString() const override;  // 如前所述，返回 #<procedure> 即可
+    ValuePtr apply(const std::vector<ValuePtr>& args)const;
 };
 #endif

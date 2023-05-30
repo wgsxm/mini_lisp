@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <sstream>
 #include<vector>
+#include"eval_env.h"
 ValuePtr vec2pair(std::vector<ValuePtr> vec) {
     if (vec.empty()) {
         return std::make_shared<NilValue>();
@@ -147,5 +148,16 @@ std::string LambdaValue::toString() const{
     return "#<procedure>";
 }
 LambdaValue::LambdaValue(std::vector<std::string> params,
-                         std::vector<ValuePtr> body)
-    : params{params}, body{body} {}
+                         std::vector<ValuePtr> body,
+                         std::shared_ptr<EvalEnv> env)
+    : params{params}, body{body}, parent{env} {
+}
+ValuePtr LambdaValue::apply(const std::vector<ValuePtr>& args)const {
+    auto childEnv = this->parent->createChild(this->params,args);
+    ValuePtr result;
+    //result = childEnv->eval(vec2pair(body));
+    for (auto& expr : body) {
+        result = childEnv->eval(expr);
+    }
+    return result;
+}

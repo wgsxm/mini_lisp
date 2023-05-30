@@ -8,18 +8,24 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             throw LispError("Unimplemented");
         }
     }
+    std::vector<ValuePtr> body;
+    for (int i = 1; i < args.size(); i++) {
+        body.push_back(args[i]);
+    }
     return std::make_shared<LambdaValue>(str,
-                                         args[1]->toVector());
+                                        body,env.shared_from_this());
 }
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (auto name = args[0]->asSymbol()) {
-        env.addObject(*name, env.eval(args[1]));
+        env.defineBinding(*name, env.eval(args[1]));
     } else if (args[0]->isPair()) {
         if (auto name = args[0]->left()->asSymbol()) {
             std::vector<ValuePtr> target;
             target.push_back(args[0]->right());
-            target.push_back(args[1]);
-            env.addObject(*name, lambdaForm(target, env));
+            for (int i = 1; i < args.size(); i++) {
+                target.push_back(args[i]);
+            }
+            env.defineBinding(*name, lambdaForm(target, env));
         } else {
             throw LispError("Unimplemented");
         }
@@ -64,5 +70,7 @@ ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     {"define", &defineForm},
     {"quote", &quoteForm},
     {"if", &ifForm},
-    {"and", &andForm},       {"or", &orForm},       {"lambda",&lambdaForm}
+    {"and", &andForm},
+    {"or", &orForm},
+    {"lambda", &lambdaForm}
     };
