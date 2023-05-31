@@ -6,6 +6,7 @@
 #include<optional>
 #include"error.h"
 #include<vector>
+#include <cstdlib>
 class EvalEnv;
 class Value;
 using ValuePtr = std::shared_ptr<Value>;
@@ -18,6 +19,7 @@ public:
     virtual bool isTrue() const;
     virtual bool isPair() const;
     virtual bool isNumber() const;
+    virtual bool isStr() const;
     virtual std::optional<std::string> asSymbol() const;
     virtual std::optional<double> asNumber() const;
     virtual std::vector<ValuePtr> toVector() const;
@@ -32,6 +34,7 @@ public:
     std::string toString() const override;
     bool isSelfEvaluating() const override;
     bool isTrue() const override;
+    bool getValue() const;
 
 private:
     const bool m_value;
@@ -43,6 +46,8 @@ public:
     bool isSelfEvaluating() const override;
     bool isNumber() const override;
     std::optional<double> asNumber() const override;
+    bool isInt() const;
+    double getNum() const;
 
 private:
     const double m_value;
@@ -52,6 +57,8 @@ public:
     StringValue(const std::string& value);
     std::string toString() const override;
     bool isSelfEvaluating() const override;
+    bool isStr() const override;
+    std::string getStr() const;
 
 private:
     const std::string m_value;
@@ -67,6 +74,7 @@ public:
     SymbolValue(const std::string& name);
     std::string toString() const override;
     std::optional<std::string> asSymbol() const override;
+    std::string getName() const;
 
 private:
     const std::string m_name;
@@ -82,7 +90,7 @@ public:
     ValuePtr left() const;
     ValuePtr right() const;
 };
-using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&);
+using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&,EvalEnv&);
 class BuiltinProcValue : public Value {
 private:
     BuiltinFuncType* func = nullptr;

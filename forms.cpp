@@ -66,11 +66,82 @@ ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     }
     return std::make_shared<BooleanValue>(false);
 }
+ValuePtr begin(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    ValuePtr result;
+    for (auto& expr : args) {
+        result =env.eval(expr);
+    }
+    return result;
+}
+    ValuePtr cond(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    for (int i = 0; i < args.size();i++) {
+            if (typeid(*args[i]->left()) == typeid(SymbolValue)) {
+                auto& symbol =
+                    static_cast<const SymbolValue&>(*args[i]->left());
+                if (symbol.getName() == "else") {
+                    if (i == args.size() - 1)
+                        return begin(args[i]->right()->toVector(), env);
+                    else
+                        throw LispError("improper end for cond");
+                }
+            }
+          if (env.eval(args[i]->left())->isTrue()) {
+                if (args[i]->right()->toVector().empty())
+                    return env.eval(args[i]->left());
+                return begin(args[i]->right()->toVector(), env);
+            }
+        //对每个子句
+    }
+}
+    ValuePtr let(const std::vector<ValuePtr>& args, EvalEnv& env) {
+        std::vector<ValuePtr> params, pargs;
+    for (auto& i : args[0]->toVector()) {
+            std::vector<ValuePtr> temp = i->toVector();
+            params.push_back(temp[0]);
+            pargs.push_back(temp[1]);
+    }
+    ValuePtr pro = std::make_shared<SymbolValue>("lambda");
+    std::vector<ValuePtr> lambda;
+    lambda.push_back(pro);
+    lambda.push_back(vec2pair(params));
+    for (int i = 1; i < args.size(); i++) {
+        lambda.push_back(args[i]);
+    }
+    std::vector<ValuePtr> ret;
+    ret.push_back(vec2pair(lambda));
+    for (auto& i : pargs) {
+        ret.push_back(i);
+    }
+    return env.eval(vec2pair(ret));
+    }
+    ValuePtr unquote(const std::vector<ValuePtr>& args, EvalEnv& env) {
+        return env.eval(args[0]);
+    }
+    ValuePtr quasiquote(const std::vector<ValuePtr>& args, EvalEnv& env) {
+        std::vector<ValuePtr> data = args[0]->toVector(), ret;
+        for (auto& i : data) {
+            if (typeid(*i) == typeid(PairValue)) {
+                std::vector<ValuePtr> vec = i->toVector();
+                if (vec[0]->asSymbol() && *vec[0]->asSymbol() == "unquote") {
+                    vec.erase(vec.begin());
+                    ret.push_back(unquote(vec,env));
+                } else
+                    ret.push_back(i);
+            } else {
+                ret.push_back(i);
+            }
+        }
+        return vec2pair(ret);
+    }
     const std::unordered_map<std::string, SpecialFormType*> SPECIAL_FORMS{
     {"define", &defineForm},
     {"quote", &quoteForm},
     {"if", &ifForm},
     {"and", &andForm},
     {"or", &orForm},
-    {"lambda", &lambdaForm}
+    {"lambda", &lambdaForm},
+        {"cond", &cond},         {"begin", &begin},
+        {"let", &let},
+        {"quasiquote", &quasiquote},
+        {"unquote",&unquote}
     };

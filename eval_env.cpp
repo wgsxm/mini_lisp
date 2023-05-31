@@ -24,10 +24,11 @@ std::shared_ptr<EvalEnv> EvalEnv::createChild(
     const std::vector<std::string>& params, const std::vector<ValuePtr>& args) {
     std::shared_ptr<EvalEnv> env(new EvalEnv(this->shared_from_this()));
     for (int i = 0; i < params.size(); i++) {
-        env->defineBinding(params[i], args[i]);
+            env->defineBinding(params[i], args[i]);
     }
     return env;
 }
+
 void EvalEnv::defineBinding(const std::string& name, ValuePtr ptr) {
     SymbolMap.insert_or_assign(name, ptr);
 }
@@ -52,7 +53,7 @@ ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
     if (typeid(*proc) == typeid(BuiltinProcValue)) {
         // 调用内置过程
         auto &process = static_cast<const BuiltinProcValue&>(*proc);
-        ValuePtr ret = process.get_func()(args);
+        ValuePtr ret = process.get_func()(args,*this);
         return ret;
     } else if (typeid(*proc) == typeid(LambdaValue)) {
         auto &process = static_cast<const LambdaValue &>(*proc);
@@ -92,6 +93,6 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         return lookupBinding(*name);
     }
     else {
-        throw LispError("Unimplemented");
+        throw LispError("this Unimplemented");
     }
 }

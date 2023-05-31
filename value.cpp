@@ -30,6 +30,9 @@ bool Value::isPair() const {
 bool Value::isNumber() const {
     return false;
 }
+bool Value::isStr() const {
+    return false;
+}
 std::optional<double> Value::asNumber() const {
     return std::nullopt;
 }
@@ -61,6 +64,9 @@ bool BooleanValue::isSelfEvaluating() const {
 bool BooleanValue::isTrue() const {
     return m_value;
 }
+bool BooleanValue::getValue() const {
+    return m_value;
+}
 NumericValue::NumericValue(double value) : m_value(value) {}
 std::string NumericValue::toString() const  {
     if (std::floor(m_value) == m_value) {
@@ -69,11 +75,17 @@ std::string NumericValue::toString() const  {
         return std::to_string(m_value);
     }
 }
+bool NumericValue::isInt() const {
+    return std::floor(m_value) == m_value;
+}
 bool NumericValue::isSelfEvaluating() const {
     return true;
 }
 bool NumericValue::isNumber() const {
     return true;
+}
+double NumericValue::getNum() const {
+    return m_value;
 }
 std::optional<double> NumericValue::asNumber() const {
     return this->m_value;
@@ -87,6 +99,12 @@ std::string StringValue::toString() const {
 bool StringValue::isSelfEvaluating() const {
     return true;
 }
+bool StringValue::isStr() const {
+    return true;
+}
+std::string StringValue::getStr() const {
+    return m_value;
+}
 std::string NilValue::toString() const {
     return std::string("()");
 }
@@ -99,6 +117,9 @@ std::string SymbolValue::toString() const  {
 }
 std::optional<std::string> SymbolValue::asSymbol() const {
     return this->toString();
+}
+std::string SymbolValue::getName() const {
+    return m_name;
 }
 PairValue::PairValue(std::shared_ptr<Value> left, std::shared_ptr<Value> right)
     : m_left(left), m_right(right) {}
@@ -155,7 +176,6 @@ LambdaValue::LambdaValue(std::vector<std::string> params,
 ValuePtr LambdaValue::apply(const std::vector<ValuePtr>& args)const {
     auto childEnv = this->parent->createChild(this->params,args);
     ValuePtr result;
-    //result = childEnv->eval(vec2pair(body));
     for (auto& expr : body) {
         result = childEnv->eval(expr);
     }
