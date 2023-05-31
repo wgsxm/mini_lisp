@@ -1,7 +1,4 @@
 #include "parser.h"
-#include"error.h"
-#include<iostream>
-#include<deque>
 Parser::Parser(std::deque<TokenPtr> tokens) : m_tokens{std::move(tokens)} {
 }
 ValuePtr Parser::parse() {
@@ -20,27 +17,23 @@ ValuePtr Parser::parse() {
         auto value = static_cast<IdentifierToken&>(*token).getName();
         return std::make_shared<SymbolValue>(value);
     } else if (token->getType() == TokenType::LEFT_PAREN) {
-        
         return parseTails();
     } else if (token->getType() == TokenType::QUOTE) {
-        
         return std::make_shared<PairValue>(
             std::make_shared<SymbolValue>("quote"),std::make_shared<PairValue>(this->parse(),std::make_shared<NilValue>()));
     } else if (token->getType() == TokenType::UNQUOTE) {
-      
         return std::make_shared<PairValue>(
             std::make_shared<SymbolValue>("unquote"),
             std::make_shared<PairValue>(this->parse(),
                                         std::make_shared<NilValue>()));
     } else if (token->getType() == TokenType::QUASIQUOTE) {
-      
         return std::make_shared<PairValue>(
             std::make_shared<SymbolValue>("quasiquote"),
             std::make_shared<PairValue>(this->parse(),
                                         std::make_shared<NilValue>()));
     }
     else {
-        throw SyntaxError("Unimplemented");
+        throw SyntaxError("Unimplemented Syntax");
     }
 }
 

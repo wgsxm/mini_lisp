@@ -1,14 +1,8 @@
 #include "eval_env.h"
-#include"error.h"
-#include<vector>
-#include<unordered_map>
-#include <algorithm>
-#include <iterator>
 #include"value.h"
 #include "./builtins.h"
 #include"forms.h"
 using namespace std::literals; // 使用 s 后缀
-
 EvalEnv::EvalEnv() {
     for (auto &i : BUILT_INS) {
         SymbolMap.insert_or_assign(
@@ -38,11 +32,9 @@ ValuePtr EvalEnv::lookupBinding(const std::string& name) {
     } else if (this->parent != nullptr) {
         return parent->lookupBinding(name);
     } else {
-        throw LispError("Variable " + name + " not defined.");
+        throw LispError("Variable " + name + " not defined");
     }
 }
-
-
 std::vector<ValuePtr> EvalEnv::evalList(ValuePtr expr) {
     std::vector<ValuePtr> result;
     std::ranges::transform(expr->toVector(), std::back_inserter(result),
@@ -61,14 +53,14 @@ ValuePtr EvalEnv::apply(ValuePtr proc, std::vector<ValuePtr> args) {
         return ret;
     }
     else {
-        throw LispError("Unimplemented");
+        throw LispError("Procedure Unimplemented");
     }
 }
 ValuePtr EvalEnv::eval(ValuePtr expr) {
     if (expr->isSelfEvaluating()) {
         return expr;
     } else if (expr->isNil()) {
-        throw LispError("Evaluating nil is prohibited.");
+        throw LispError("Evaluating Nil");
     } else if (expr->isPair()) {
         std::vector<ValuePtr> v = expr->toVector();
         if (auto name = expr->left()->asSymbol()) {
@@ -93,6 +85,6 @@ ValuePtr EvalEnv::eval(ValuePtr expr) {
         return lookupBinding(*name);
     }
     else {
-        throw LispError("this Unimplemented");
+        throw LispError("Unimplemented Expression");
     }
 }

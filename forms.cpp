@@ -1,11 +1,13 @@
 #include "forms.h"
 ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() < 2)
+        throw LispError("insufficient number of arguments");
     std::vector<std::string> str;
     for (auto& i : args[0]->toVector()) {
         if (i->asSymbol()) {
             str.push_back(*i->asSymbol());
         }else {
-            throw LispError("Unimplemented");
+            throw LispError("Unvalid params");
         }
     }
     std::vector<ValuePtr> body;
@@ -16,7 +18,9 @@ ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
                                         body,env.shared_from_this());
 }
 ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() < 2) throw LispError("insufficient number of arguments");
     if (auto name = args[0]->asSymbol()) {
+        if (args.size() > 2) throw LispError("excessive number of arguments");
         env.defineBinding(*name, env.eval(args[1]));
     } else if (args[0]->isPair()) {
         if (auto name = args[0]->left()->asSymbol()) {
@@ -27,18 +31,26 @@ ValuePtr defineForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
             }
             env.defineBinding(*name, lambdaForm(target, env));
         } else {
-            throw LispError("Unimplemented");
+            throw LispError("Unvalid function name");
         }
     }
     else {
-        throw LispError("Unimplemented");
+        throw LispError("Unvalid argument name");
     }
     return std::make_shared<NilValue>();
 }
 ValuePtr quoteForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (args.size() > 1)
+        throw LispError("excessive number of arguments");
     return args[0];
 }
 ValuePtr ifForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() <3)
+        throw LispError("insufficient number of arguments");
+    else if (args.size() > 3)
+        throw LispError("excessive number of arguments");
     if (env.eval(args[0])->isTrue()) {
         return env.eval(args[1]);
     } else {
@@ -66,14 +78,17 @@ ValuePtr orForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     }
     return std::make_shared<BooleanValue>(false);
 }
+
+
 ValuePtr begin(const std::vector<ValuePtr>& args, EvalEnv& env) {
-    ValuePtr result;
+    ValuePtr result = std::make_shared<NilValue>();
     for (auto& expr : args) {
         result =env.eval(expr);
     }
     return result;
 }
     ValuePtr cond(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() < 1) throw LispError("insufficient number of arguments");
     for (int i = 0; i < args.size();i++) {
             if (typeid(*args[i]->left()) == typeid(SymbolValue)) {
                 auto& symbol =
@@ -82,7 +97,7 @@ ValuePtr begin(const std::vector<ValuePtr>& args, EvalEnv& env) {
                     if (i == args.size() - 1)
                         return begin(args[i]->right()->toVector(), env);
                     else
-                        throw LispError("improper end for cond");
+                        throw LispError("improper else");
                 }
             }
           if (env.eval(args[i]->left())->isTrue()) {
@@ -94,6 +109,8 @@ ValuePtr begin(const std::vector<ValuePtr>& args, EvalEnv& env) {
     }
 }
     ValuePtr let(const std::vector<ValuePtr>& args, EvalEnv& env) {
+    if (args.size() < 2)
+        throw LispError("insufficient number of arguments");
         std::vector<ValuePtr> params, pargs;
     for (auto& i : args[0]->toVector()) {
             std::vector<ValuePtr> temp = i->toVector();
@@ -115,9 +132,13 @@ ValuePtr begin(const std::vector<ValuePtr>& args, EvalEnv& env) {
     return env.eval(vec2pair(ret));
     }
     ValuePtr unquote(const std::vector<ValuePtr>& args, EvalEnv& env) {
+        if (args.size() < 1)
+            throw LispError("insufficient number of arguments");
         return env.eval(args[0]);
     }
     ValuePtr quasiquote(const std::vector<ValuePtr>& args, EvalEnv& env) {
+        if (args.size() < 1)
+            throw LispError("insufficient number of arguments");
         std::vector<ValuePtr> data = args[0]->toVector(), ret;
         for (auto& i : data) {
             if (typeid(*i) == typeid(PairValue)) {

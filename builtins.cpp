@@ -8,7 +8,7 @@ std::vector<double> value2num(const std::vector<ValuePtr>& params) {
         if (auto i = value->asNumber()) {
             ret.push_back(*i);
         } else {
-            throw LispError("not number");
+            throw LispError("non-numeric value exist");
         }
     }
     return ret;
@@ -18,25 +18,44 @@ ValuePtr add(const std::vector<ValuePtr>& params,EvalEnv& env) {
     double result = 0;
     for (const auto& i : params) {
         if (!i->isNumber()) {
-            throw LispError("Cannot add a non-numeric value.");
+            throw LispError("Cannot add a non-numeric value");
         }
         result += i->asNumber().value();
     }
     return std::make_shared<NumericValue>(result);
 }
 ValuePtr minus(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 2) throw LispError("too many values to minus");
+    if (params.size() == 0) throw LispError("too few values to minus");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot minus a non-numeric value");
+        }
+    }
     std::vector<double> nums = value2num(params);
     if (nums.size() == 1) return std::make_shared<NumericValue>(-nums[0]);
     return std::make_shared<NumericValue>(nums[0] - nums[1]);
 }
 ValuePtr multiply(const std::vector<ValuePtr>& params, EvalEnv& env) {
     double ret = 1;
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot multiply a non-numeric value");
+        }
+    }
     for (auto value : value2num(params)) {
         ret *= value;
     }
     return std::make_shared<NumericValue>(ret);
 }
 ValuePtr divide(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 2) throw LispError("too many values to divide");
+    if (params.size() == 0) throw LispError("too few values to divide");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot divide a non-numeric value");
+        }
+    }
     std::vector<double> nums = value2num(params);
     if (nums.size() == 1) {
         if (nums[0] == 0) throw LispError("divide by zero");
@@ -47,17 +66,36 @@ ValuePtr divide(const std::vector<ValuePtr>& params, EvalEnv& env) {
     }
 }
 ValuePtr greater(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot compare non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
-    if (nums.size() != 2) {
-        throw LispError("");
+    if (nums.size() > 2) {
+        throw LispError("too many values to compare");
+    } else if (nums.size() < 2) {
+        throw LispError("too few values to compare");
     }
     return std::make_shared<BooleanValue>(nums[0] > nums[1]);
 }
 ValuePtr abs(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() != 1) throw LispError("can only get abs for one value");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot get abs for a non-numeric value");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<NumericValue>(std::abs(nums[0]));
 }
 ValuePtr expt(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() !=2) throw LispError("can only get expt for two values");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot get expt for non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     if (nums[0] == 0 && nums[1] == 0)
         throw LispError("zero raised to the power of zero");
@@ -76,10 +114,23 @@ bool is_int(double x) {
     return std::floor(x) == x;
 }
 ValuePtr quotient(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() != 2) throw LispError("can only get quotient for two values");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot get quotient for non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<NumericValue>(quotient(nums[0],nums[1]));
 }
 ValuePtr modulo(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() != 2)
+        throw LispError("can only get modulo for two values");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot get modulo for non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     int x = nums[0], y = nums[1];
     if (y == 0) throw LispError("mod by zero");
@@ -121,6 +172,9 @@ bool equal(const ValuePtr& a, const ValuePtr& b) {
         return ret;
     }
 ValuePtr eq(const std::vector<ValuePtr>& params, EvalEnv& env) {
+        if (params.size() > 2) throw LispError("too many values to compare");
+        else if (params.size() < 2)
+            throw LispError("too few values to compare");
     if (typeid(*params[0]) != typeid(*params[1]))
         return std::make_shared<BooleanValue>(false);
     if (typeid(*params[0]) == typeid(BooleanValue) ||
@@ -132,40 +186,118 @@ ValuePtr eq(const std::vector<ValuePtr>& params, EvalEnv& env) {
     return std::make_shared<BooleanValue>(params[0]==params[1]);
 }
 ValuePtr equal(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 2)
+        throw LispError("too many values to compare");
+    else if (params.size() < 2)
+        throw LispError("too few values to compare");
     return std::make_shared<BooleanValue>(equal(params[0], params[1]));
 }
 ValuePtr equal_num(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 2)
+        throw LispError("too many values to compare");
+    else if (params.size() < 2)
+        throw LispError("too few values to compare");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot compare non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<BooleanValue>(nums[0] == nums[1]);
 }
 ValuePtr less(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 2)
+        throw LispError("too many values to compare");
+    else if (params.size() < 2)
+        throw LispError("too few values to compare");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot compare non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<BooleanValue>(nums[0]< nums[1]);
 }
 ValuePtr less_equal(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 2)
+        throw LispError("too many values to compare");
+    else if (params.size() < 2)
+        throw LispError("too few values to compare");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot compare non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<BooleanValue>(nums[0] <= nums[1]);
 }
 ValuePtr greater_equal(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 2)
+        throw LispError("too many values to compare");
+    else if (params.size() < 2)
+        throw LispError("too few values to compare");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot compare non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<BooleanValue>(nums[0] >= nums[1]);
 }
 ValuePtr even(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 1)
+        throw LispError("too many values to assert");
+    else if (params.size() < 1)
+        throw LispError("too few values to assert");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot assert non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<BooleanValue>(int(nums[0])%2==0);
 }
 ValuePtr odd(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 1)
+        throw LispError("too many values to assert");
+    else if (params.size() < 1)
+        throw LispError("too few values to assert");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot assert non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<BooleanValue>(int(std::abs(nums[0])) % 2 == 1);
 }
 ValuePtr zero(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() > 1)
+        throw LispError("too many values to assert");
+    else if (params.size() < 1)
+        throw LispError("too few values to assert");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot assert non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     return std::make_shared<BooleanValue>(nums[0] == 0);
 }
 ValuePtr Not(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() >1)
+        throw LispError("too many values to assert");
+    else if (params.size() <1)
+        throw LispError("too few values to assert");
     return std::make_shared<BooleanValue>(!params[0]->isTrue());
 }
 ValuePtr remainder(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() != 2)
+        throw LispError("can only get remainder for two values");
+    for (const auto& i : params) {
+        if (!i->isNumber()) {
+            throw LispError("Cannot get remainder for non-numeric values");
+        }
+    }
     std::vector<double> nums = value2num(params);
     int x = nums[0], y = nums[1];
     return std::make_shared<NumericValue>(x % y);
@@ -177,9 +309,17 @@ ValuePtr print(const std::vector<ValuePtr>& params, EvalEnv& env) {
     return std::make_shared<NilValue>();
 }
 ValuePtr apply(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 2)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 2)
+        throw LispError("excessive number of arguments");
     return env.apply(params[0], params[1]->toVector());
 }
 ValuePtr display(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() <1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     if (params[0]->isStr()) {
         auto &ret = static_cast<const StringValue&>(*params[0]);
         std::cout << ret.getStr();
@@ -217,9 +357,17 @@ ValuePtr exit(const std::vector<ValuePtr>& params, EvalEnv& env) {
     }
 }
 ValuePtr eval(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return env.eval(params[0]);
 }
 ValuePtr is_atom(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     if (typeid(*params[0]) == typeid(BooleanValue)||
         typeid(*params[0]) == typeid(NumericValue) ||
         typeid(*params[0]) == typeid(StringValue) ||
@@ -229,9 +377,17 @@ ValuePtr is_atom(const std::vector<ValuePtr>& params, EvalEnv& env) {
     return std::make_shared<BooleanValue>(false);
 }
 ValuePtr is_boolean(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(typeid(*params[0])==typeid(BooleanValue));
 }
 ValuePtr is_integer(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     if (typeid(*params[0]) == typeid(NumericValue)){
         auto& num = static_cast<const NumericValue&>(*params[0]);
         return std::make_shared<BooleanValue>(num.isInt());
@@ -239,6 +395,7 @@ ValuePtr is_integer(const std::vector<ValuePtr>& params, EvalEnv& env) {
     return std::make_shared<BooleanValue>(false);
 }
 bool is_list(const ValuePtr& pair) {
+
     if (pair->isNil()) return true;
     else {
         if (pair->isPair()) {
@@ -248,29 +405,58 @@ bool is_list(const ValuePtr& pair) {
     }
 }
 ValuePtr is_list(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(is_list(params[0]));
 }
-ValuePtr
-    is_num(const std::vector<ValuePtr>& params, EvalEnv& env) {
+ValuePtr is_num(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(params[0]->isNumber());
 }
 ValuePtr is_null(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(params[0]->isNil());
 }
 ValuePtr is_pair(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(params[0]->isPair());
 }
 ValuePtr is_procedure(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(typeid(*params[0]) ==
                                           typeid(BuiltinProcValue)||typeid(*params[0])==typeid(LambdaValue));
 }
 ValuePtr is_string(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(params[0]->isStr());
 }
 ValuePtr is_symbol(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<BooleanValue>(typeid(*params[0]) ==
                                           typeid(SymbolValue));
 }
+
+
 ValuePtr append(const std::vector<ValuePtr>& params, EvalEnv& env) {
     if (params.empty()) return std::make_shared<NilValue>();
     std::vector<ValuePtr> ret;
@@ -282,37 +468,60 @@ ValuePtr append(const std::vector<ValuePtr>& params, EvalEnv& env) {
     return vec2pair(ret);
 }
 ValuePtr car(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
+    if (!params[0]->isPair()) throw LispError("can only get car for a pair");
     return params[0]->left();
 }
 ValuePtr cdr(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
+    if (!params[0]->isPair()) throw LispError("can only get cdr for a pair");
     return params[0]->right();
 }
 ValuePtr cons(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 2)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 2)
+        throw LispError("excessive number of arguments");
     return std::make_shared<PairValue>(params[0], params[1]);
 }
 ValuePtr length(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 1)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 1)
+        throw LispError("excessive number of arguments");
     return std::make_shared<NumericValue>(params[0]->toVector().size());
 }
 ValuePtr list(const std::vector<ValuePtr>& params, EvalEnv& env) {
     return vec2pair(params);
 }
 ValuePtr map(const std::vector<ValuePtr>& params, EvalEnv& env) {
-    //auto& pro = static_cast<const BuiltinProcValue&>(*params[0]);
+    if (params.size() < 2)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 2)
+        throw LispError("excessive number of arguments");
     std::vector<ValuePtr> data = params[1]->toVector(), ret;
     for (auto& i : data) {
         if (typeid(*i) == typeid(PairValue)) {
-            //ret.push_back(pro.get_func()(i->toVector(), env));
             ret.push_back(env.apply(params[0], i->toVector()));
         } else {
             std::vector<ValuePtr> temp;
             temp.push_back(i);
-            //ret.push_back(pro.get_func()(temp, env));
             ret.push_back(env.apply(params[0], temp));
         }
     }
     return vec2pair(ret);
 }
 ValuePtr filter(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 2)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 2)
+        throw LispError("excessive number of arguments");
     std::vector<ValuePtr> data = params[1]->toVector(), ret;
     for (auto& i : data) {
         std::vector<ValuePtr> temp;
@@ -323,6 +532,10 @@ ValuePtr filter(const std::vector<ValuePtr>& params, EvalEnv& env) {
     return vec2pair(ret);
 }
 ValuePtr reduce(const std::vector<ValuePtr>& params, EvalEnv& env) {
+    if (params.size() < 2)
+        throw LispError("insufficient number of arguments");
+    else if (params.size() > 2)
+        throw LispError("excessive number of arguments");
     std::vector<ValuePtr> data = params[1]->toVector();
     if (data.empty()) throw LispError("reduce Nil");
     if (data.size() == 1) {

@@ -1,10 +1,4 @@
-#include "./value.h"
-#include <cmath>
-#include <iomanip>
-#include<iostream>
-#include <iomanip>
-#include <sstream>
-#include<vector>
+#include "value.h"
 #include"eval_env.h"
 ValuePtr vec2pair(std::vector<ValuePtr> vec) {
     if (vec.empty()) {

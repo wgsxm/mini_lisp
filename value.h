@@ -6,7 +6,10 @@
 #include<optional>
 #include"error.h"
 #include<vector>
+#include <sstream>
 #include <cstdlib>
+#include <iomanip>
+#include <cmath>
 class EvalEnv;
 class Value;
 using ValuePtr = std::shared_ptr<Value>;
@@ -94,9 +97,7 @@ using BuiltinFuncType = ValuePtr(const std::vector<ValuePtr>&,EvalEnv&);
 class BuiltinProcValue : public Value {
 private:
     BuiltinFuncType* func = nullptr;
-
 public:
-    // 直接返回 #<procedure> 就可以，我们不做更多要求。
     BuiltinProcValue(BuiltinFuncType* func);
     std::string toString() const override;
     BuiltinFuncType* get_func() const;
@@ -106,7 +107,6 @@ private:
     std::vector<std::string> params;
     std::vector<ValuePtr> body;
     std::shared_ptr<EvalEnv> parent=nullptr;
-    // [...]
 public:
     LambdaValue(std::vector<std::string>, std::vector<ValuePtr>,
                 std::shared_ptr<EvalEnv>);

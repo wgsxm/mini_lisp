@@ -2,7 +2,10 @@
 #define EVAL_ENV_H
 #include"./value.h"
 #include<unordered_map>
-
+#include"error.h"
+#include<vector>
+#include <algorithm>
+#include <iterator>
 class EvalEnv:public std::enable_shared_from_this<EvalEnv> {
 private:
     std::shared_ptr<EvalEnv> parent = nullptr;

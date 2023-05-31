@@ -3,7 +3,8 @@
 #include"value.h"
 #include<deque>
 #include"token.h"
-
+#include<iostream>
+#include"error.h"
 class Parser {
 private:
     std::deque<TokenPtr> m_tokens;
