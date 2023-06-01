@@ -274,7 +274,9 @@ int main() {
                 }
                 if (ch != 13)  //非回车
                 {
-                    if (ch != 8)  //不是退格
+                    if (ch == 9)
+                        ;
+                    else if (ch != 8)  //不是退格
                     {
                         if (cursorPosition.X == 3 + lines[temp_line].size())
                             line += ch;
