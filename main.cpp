@@ -7,6 +7,7 @@
 #include "./rjsj_test.hpp"
 #include"eval_env.h"
 #include"builtins.h"
+#include"forms.h"
 #include<conio.h>
 #include<Windows.h>
 #include<stack>
@@ -20,6 +21,7 @@ struct TestCtx {
         return result->toString();
     }
 };
+std::shared_ptr<EvalEnv> env = EvalEnv::createGlobal();
 bool ValidInput(const std::string& temp) {
     std::stack<char> store;
     for (char ch : temp) {
@@ -43,11 +45,131 @@ void clearline(int length) {
         std::cout << char(8);
     }
 }
+void clearall(const std::vector<std::string>& lines) {
+    for (int i = 0; i < lines.size(); i++) {
+        std::cout << '\r';
+        for (int j = 0; j < 3 + lines[i].size(); j++) std::cout << ' ';
+        if (i!=lines.size()-1)
+        std::cout << '\n';
+    }
+}
+const int COLOR_DEFAULT = 7;    // 默认颜色（白色）
+const int COLOR_KEYWORD = 5;    // 关键字颜色（紫色）
+const int COLOR_STRING = 10;    // 字符串颜色（绿色）
+const int COLOR_NUMBER = 6;     // 数字颜色（黄色）
+const int COLOR_COMMENT = 14;   // 注释颜色（亮黄色）
+const int COLOR_FUNCTION = 11;  // 函数名颜色（洋红色）
+const int COLOR_VARIABLE = 9;   // 变量名颜色（青色）
+const std::set<char> TOKEN_END{'(', ')', '\'', '`', ',', '"', ' ', ';'};
+void setConsoleColor(int color) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, color);
+}
+bool is_keyword(const std::string& expr) {
+    return SPECIAL_FORMS.count(expr);
+}
+bool is_number_or_boolean(const std::string& expr) {
+    if (expr == "#t" || expr == "#f") return true;
+    char* p = nullptr;
+    double d = strtod(expr.c_str(), &p);
+    return d != HUGE_VAL && *p == '\0';
+}
+bool is_function(const std::string& expr) {
+    if (env->isdefined(expr)) {
+        if (env->lookupBinding(expr)->toString() == "#<procedure>") return true;
+    }
+    return false;
+}
+bool is_variable(const std::string& expr) {
+    if (env->isdefined(expr)) {
+        if (env->lookupBinding(expr)->toString() != "#<procedure>") return true;
+    }
+    return false;
+}
+int highlight_expr(const std::string& expr) {
+    if (is_number_or_boolean(expr)) return COLOR_NUMBER;
+    if (is_keyword(expr)) return COLOR_KEYWORD;
+    if (is_function(expr)) return COLOR_FUNCTION;
+    if (is_variable(expr)) return COLOR_VARIABLE;
+    return COLOR_DEFAULT;
+}
+bool highlight_line(const std::string& line, bool isStr = false) {
+    bool isComment = false;
+    for (int i = 0; i < line.size(); i++) {
+        char ch = line[i];
+        if (isStr) {
+            setConsoleColor(COLOR_STRING);
+            if (ch != '\"')
+                std::cout << ch;
+            else {
+                isStr = !isStr;
+                std::cout << ch;
+            }
+        } else if (isComment) {
+            setConsoleColor(COLOR_COMMENT);
+            std::cout << ch;
+        } else if (TOKEN_END.count(ch)) {
+            if (ch == '\"') {
+                isStr = !isStr;  //注意转义字符 to be added
+                setConsoleColor(COLOR_STRING);
+                std::cout << ch;
+            } else if (ch == ';') {
+                isComment = true;
+                setConsoleColor(COLOR_COMMENT);
+                std::cout << ch;
+            } else {
+                setConsoleColor(COLOR_DEFAULT);
+                std::cout << ch;
+            }
+        } else {
+            std::string temp;
+            int j;
+            for (j = i; j < line.size(); j++) {
+                temp += line[j];
+                if (TOKEN_END.count(line[j + 1])) {
+                    i = j;
+                    break;
+                }
+            }
+            setConsoleColor(highlight_expr(temp));
+            std::cout << temp;
+            if (j == line.size()) break;
+        }
+    }
+    setConsoleColor(COLOR_DEFAULT);
+    return isStr;
+}
+void outputall(const std::vector<std::string>& lines) {
+    //输出所有
+    bool isStr = false;
+    for (int i = 0; i < lines.size(); i++) {
+        //先清除
+        clearline(lines[i].size() + 2 + 3);
+        setConsoleColor(COLOR_DEFAULT);
+        if (i == 0)
+            std::cout << ">>>";
+        else
+            std::cout << "...";
+        isStr = highlight_line(lines[i], isStr);
+        if (i != lines.size() - 1) std::cout << std::endl;
+    }
+}
+bool isLastRow(int row) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    return row == csbi.dwSize.Y - 1;
+}
 int main() {
-    //RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4,Lv5,Lv5Extra,Lv6,Lv7,Lv7Lib,Sicp);
-    std::shared_ptr<EvalEnv> env = EvalEnv::createGlobal();
+   //RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4,Lv5,Lv5Extra,Lv6,Lv7,Lv7Lib,Sicp);
+    SetWindowLongPtrA(GetConsoleWindow(), GWL_STYLE,
+                      GetWindowLongPtrA(GetConsoleWindow(), GWL_STYLE) &
+                          ~WS_SIZEBOX & ~WS_MAXIMIZEBOX & ~WS_MINIMIZEBOX);
     while (true) {
         try {
+            CONSOLE_SCREEN_BUFFER_INFO ori;
+            GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ori);
+            COORD firstline;
+            firstline.Y = ori.dwCursorPosition.Y;
             SetConsoleTextAttribute(
                 GetStdHandle(STD_OUTPUT_HANDLE),
                 FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
@@ -55,19 +177,95 @@ int main() {
             //处理字符串
             int temp_line = 0;
             std::vector<std::string> lines;
-            std::vector<int> space;
             lines.push_back(std::string());
-            space.push_back(3);
             while (true) {
+                if (isLastRow(firstline.Y + lines.size()-2)) {
+                    firstline.Y--;
+                    if (firstline.Y<0)
+                    throw std::runtime_error("too many lines");
+                }
+                CONSOLE_SCREEN_BUFFER_INFO info;
+                GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),
+                                           &info);
+                COORD cursorPosition;
+                cursorPosition.X = info.dwCursorPosition.X;
+                cursorPosition.Y = info.dwCursorPosition.Y;
                 std::string& line = lines[temp_line];
                 char ch = _getch();
+                firstline.X = 0;
+                SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                         firstline);
+                clearall(lines);
                 if (ch == 26 || ch == 23) exit(0);  // EOF
                 if (ch == 0) {                      //输入F1等
+                    firstline.X = 3 + lines[0].size();
+                    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                             firstline);
+                    outputall(lines);
                     ch = _getch();
                     continue;
                 } else if (ch == -32) {  //输入方向,delete
+                    firstline.X = 3 + lines[0].size();
+                    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                             firstline);
+                    outputall(lines);
+                    //右77 左75 下80 上72
                     ch = _getch();
+                    if (ch == 77) {
+                        if (cursorPosition.X >= 3 + lines[temp_line].size())
+                            ;
+                        else
+                            cursorPosition.X++;
+                    }
+                    if (ch == 75) {
+                        if (cursorPosition.X == 3) {
+                            if (lines[temp_line].empty()) {
+                                if (temp_line == 0)
+                                    ;
+                                else {  //回到上一行
+                                    lines.erase(lines.begin() + temp_line);
+                                    clearline(3);
+                                    temp_line--;
+                                    cursorPosition.X =
+                                        3 + lines[temp_line].size();
+                                    cursorPosition.Y--;
+                                }
+                            }
+                        } else
+                            cursorPosition.X--;
+                    }
+                    if (ch == 80) {
+                        if (temp_line == lines.size() - 1)
+                            ;
+                        else {
+                            cursorPosition.Y++, temp_line++;
+                            if (cursorPosition.X > 3 + lines[temp_line].size())
+                                cursorPosition.X = 3 + lines[temp_line].size();
+                        }
+                    }
+                    if (ch == 72) {
+                        if (temp_line == 0) {
+                            ;
+                        } else {
+                            if (line.empty() && temp_line == lines.size() - 1) {
+                                clearline(3);
+                                lines.erase(lines.begin() + temp_line);
+                            }
+                            cursorPosition.Y--;
+                            temp_line--;
+                            if (cursorPosition.X > 3 + lines[temp_line].size())
+                                cursorPosition.X = 3 + lines[temp_line].size();
+                        }
+                    }
+                    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                             cursorPosition);
+                    continue;
                 } else if (ch < 0) {
+                    firstline.X = 3 + lines[0].size();
+                    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                             firstline);
+                    outputall(lines);
+                    std::cout << std::endl;
                     //非ascii
                     ch = _getch();
                     throw std::runtime_error("read non-ascii");
@@ -76,37 +274,69 @@ int main() {
                 {
                     if (ch != 8)  //不是退格
                     {
-                        line += ch;
-                        clearline(line.size() - 1);
+                        if (cursorPosition.X == 3 + lines[temp_line].size())
+                            line += ch;
+                        else {
+                            line.insert(line.begin() + (cursorPosition.X - 3),
+                                        ch);
+                        }
+                        cursorPosition.X++;
                     } else if (!line.empty()) {
-                        line.pop_back();
-                        clearline(line.size() + 1);
+                        cursorPosition.X--;
+                        if (cursorPosition.X == 3 + lines[temp_line].size())
+                            line.pop_back();
+                        else if (cursorPosition.X+1==3) {//如果在开头
+                            cursorPosition.X++;
+                            if (temp_line == 0)
+                                ;
+                            else {
+                                cursorPosition.Y--;
+                                lines[temp_line-1] += line;
+                                lines.erase(lines.begin() + temp_line);
+                                cursorPosition.X =
+                                    3 + lines[temp_line - 1].size();
+                                temp_line--;
+                            }
+                        }
+                        else {
+                            line.erase(line.begin() + (cursorPosition.X - 3));
+                        }
+
                     } else {
                         if (temp_line == 0)
-                            continue;
+                            ;
                         else {  //回到上一行
-                            clearline(space[temp_line]);
+                            lines.erase(lines.begin() + temp_line);
+                            clearline(3);
                             temp_line--;
-                            CONSOLE_SCREEN_BUFFER_INFO info;
-                            GetConsoleScreenBufferInfo(
-                                GetStdHandle(STD_OUTPUT_HANDLE), &info);
-                            COORD cursorPosition;
-                            cursorPosition.X = info.dwCursorPosition.X + 3 +
-                                               lines[temp_line].size();
-                            cursorPosition.Y = info.dwCursorPosition.Y - 1;
-                            SetConsoleCursorPosition(
-                                GetStdHandle(STD_OUTPUT_HANDLE),
-                                cursorPosition);
-                            continue;
+                            cursorPosition.X = 3 + lines[temp_line].size();
+                            cursorPosition.Y--;
                         }
                     }
                 } else {  //回车
+                    //如果完成了表达式怎么办？to be added
                     std::string ret;
+                    int isstr = 0;
                     for (auto& i : lines) {
-                        ret += i;
-                        ret += " ";
+                        std::string no_comment;
+                        for (char ch : i) {
+                            if (ch != ';') {
+                                no_comment += ch;
+                            } else
+                                break;
+                        }
+                        for (char ch : no_comment) {
+                            if (ch == '\"') isstr = !isstr;
+                        }
+                        ret += no_comment;
+                        if (!isstr) ret += " ";
                     }
-                    if (ValidInput(ret)) {//输出
+                    if (ValidInput(ret) && temp_line == lines.size() - 1 &&
+                        cursorPosition.X == 3 + lines[temp_line].size()) {
+                        firstline.X = 3 + lines[0].size();
+                        SetConsoleCursorPosition(
+                            GetStdHandle(STD_OUTPUT_HANDLE), firstline);
+                        outputall(lines);
                         std::cout << std::endl;
                         bool cer = 1;
                         for (int i = 0; i < ret.size(); i++) {
@@ -114,33 +344,71 @@ int main() {
                         }
                         if (cer) break;
                         auto tokens = Tokenizer::tokenize(ret);
-                        Parser parser(std::move(tokens));  
+                        Parser parser(std::move(tokens));
                         auto value = parser.parse();
                         auto result = env->eval(std::move(value));
                         std::cout << result->toString() << std::endl;
                         Sleep(5);
                         break;
-                    } else {
-                        std::cout << std::endl << "...";  //继续输入
-                        int temp_space = 0;               //控制缩进
-                        lines.push_back(std::string());
-                        temp_line++;
-                        if (lines.size() == temp_line)
-                            lines.push_back(std::string());
-                        if (space.size() > temp_line)
-                            space[temp_line] = 3 + temp_space;
-                        else
-                            space.push_back(3 + temp_space);
-                        continue;
                     }
+                    int temp_space = 3;  //控制缩进
+                    if (lines.size() == temp_line + 1) {
+                        if (cursorPosition.X ==
+                            3 + lines[temp_line].size())  //在中间行的最后
+                        {
+                            lines.push_back(std::string());  //多一行
+                        } else {
+                            std::string temp;
+                            int len = lines[temp_line].size();
+                            for (int i = cursorPosition.X - 3;
+                                 i < lines[temp_line].size(); i++) {
+                                temp += lines[temp_line][i];
+                            }
+                            for (int i = cursorPosition.X - 3; i < len; i++) {
+                                lines[temp_line].pop_back();
+                            }
+                            //	std::cout << temp;
+                            lines.push_back(std::string(temp));
+                        }
+                    } else {
+                        if (cursorPosition.X ==
+                            3 + lines[temp_line].size())  //在中间行的最后
+                        {
+                            lines.insert(lines.begin() + temp_line + 1,
+                                         std::string());  //多一行
+                        } else {
+                            std::string temp;
+                            int len = lines[temp_line].size();
+                            for (int i = cursorPosition.X - 3;
+                                 i < lines[temp_line].size(); i++) {
+                                temp += lines[temp_line][i];
+                            }
+                            for (int i = cursorPosition.X - 3; i < len; i++) {
+                                lines[temp_line].pop_back();
+                            }
+                            lines.insert(lines.begin() + temp_line + 1,
+                                         std::string(temp));
+                        }
+                    }
+                    temp_line++;
+                    cursorPosition.Y++;
+                    cursorPosition.X = 3 + lines[temp_line].size();
                 }
-
-                std::cout << line;
+                firstline.X = 3 + lines[0].size();
+                SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                         firstline);
+                outputall(lines);
+                SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                         cursorPosition);
             }
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
         }
     }
+}
+
+
+
     
     
     //while (true) {
@@ -162,7 +430,7 @@ int main() {
     //        std::cerr << "Error: " << e.what() << std::endl;
     //    }
     //}
-}
+
 
 // std::string filePath = "lv7-answer.scm";  // 文件路径
 // std::ifstream inputFile(filePath);        // 打开文件

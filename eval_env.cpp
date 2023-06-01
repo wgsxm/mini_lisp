@@ -22,7 +22,14 @@ std::shared_ptr<EvalEnv> EvalEnv::createChild(
     }
     return env;
 }
-
+bool EvalEnv::isdefined(const std::string& expr) {
+    if (SymbolMap.count(expr)) return true;
+    else if (parent!=nullptr) {
+        return parent->isdefined(expr);
+    } else {
+        return false;
+    }
+}
 void EvalEnv::defineBinding(const std::string& name, ValuePtr ptr) {
     SymbolMap.insert_or_assign(name, ptr);
 }
