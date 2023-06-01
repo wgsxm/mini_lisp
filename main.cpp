@@ -23,8 +23,10 @@ struct TestCtx {
 };
 std::shared_ptr<EvalEnv> env = EvalEnv::createGlobal();
 bool ValidInput(const std::string& temp) {
+    int quotes = 0;
     std::stack<char> store;
     for (char ch : temp) {
+        if (ch == '\"') quotes++;
         if (ch == '(') {
             store.push(ch);
         } else if (ch == ')') {
@@ -32,7 +34,7 @@ bool ValidInput(const std::string& temp) {
             store.pop();
         }
     }
-    return store.empty();
+    return store.empty() && (!(quotes % 2));
 }
 void clearline(int length) {
     for (int i = 0; i < length; i++) {
@@ -320,11 +322,15 @@ int main() {
                     for (auto& i : lines) {
                         std::string no_comment;
                         for (char ch : i) {
+                            if (ch == '\"') isstr = !isstr;
                             if (ch != ';') {
                                 no_comment += ch;
-                            } else
+                            } else if (isstr) {
+                                no_comment += ch;
+                            }else
                                 break;
                         }
+                        isstr = 0;
                         for (char ch : no_comment) {
                             if (ch == '\"') isstr = !isstr;
                         }
