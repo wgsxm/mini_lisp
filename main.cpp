@@ -265,7 +265,28 @@ bool isLineEnd(int column) {
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
     return column == csbi.dwSize.X - 1;
 }
-int main() {
+int find_next_par(const std::string& line, int place) {
+    if (place >= line.size()) return -1;
+    if (line[place] == '(') {
+        for (int i = place+1; i < line.size(); i++) {
+            {
+                if (line[i] == '(') {
+                    return i - place;
+                }
+            }
+        }
+    } else {
+        for (int i = place; i < line.size(); i++) {
+            {
+                if (line[i] == '(') {
+                    return i - place;
+                }
+            }
+        }
+    }
+    return line.size()-place-1;
+}
+    int main() {
    //RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4,Lv5,Lv5Extra,Lv6,Lv7,Lv7Lib,Sicp);
     SetWindowLongPtrA(GetConsoleWindow(), GWL_STYLE,
                       GetWindowLongPtrA(GetConsoleWindow(), GWL_STYLE) &
@@ -386,8 +407,25 @@ int main() {
                     if (ch == 9)//tab
                         
                     {
-                        if (completion.empty())
-                            ;
+                        if (completion.empty()) {
+                            if (temp_line != 0)
+                            {
+                                int space = find_next_par(lines[temp_line - 1],
+                                                          cursorPosition.X - 3);
+                                if (space > 0) {
+                                    if (cursorPosition.X - 3 == line.size())
+                                        for (int i = 0; i < space; i++) {
+                                            lines[temp_line] += ' ';
+                                            cursorPosition.X++;
+                                        }
+                                    else
+                                        for (int i = 0; i < space; i++) {
+                                            cursorPosition.X++;
+                                        }
+                                }
+                            }
+                            
+                        }
                         else {
                             cursorPosition.Y = firstline.Y + lines.size() - 1;
                             lines[lines.size() - 1] += completion;
