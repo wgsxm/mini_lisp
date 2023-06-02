@@ -24,9 +24,16 @@ struct TestCtx {
 std::shared_ptr<EvalEnv> env = EvalEnv::createGlobal();
 bool ValidInput(const std::string& temp) {
     int quotes = 0;
+    std::string no_string;
+    bool isStr = false;
+    for (char ch:temp) {
+        if (ch == '\"') quotes++, isStr = !isStr;
+        else if (isStr) {
+            ;//do nothing
+        } else if (ch == '(' || ch == ')')
+            no_string.push_back(ch);}
     std::stack<char> store;
-    for (char ch : temp) {
-        if (ch == '\"') quotes++;
+    for (char ch : no_string) {
         if (ch == '(') {
             store.push(ch);
         } else if (ch == ')') {
@@ -56,12 +63,13 @@ void clearall(const std::vector<std::string>& lines) {
     }
 }
 const int COLOR_DEFAULT = 7;    // 默认颜色（白色）
-const int COLOR_KEYWORD = 13;    // 关键字颜色（洋红色）
+const int COLOR_KEYWORD = 9;    // 关键字颜色（洋红色）
 const int COLOR_STRING = 10;    // 字符串颜色（绿色）
 const int COLOR_NUMBER = 6;     // 数字颜色（黄色）
 const int COLOR_COMMENT = 14;   // 注释颜色（亮黄色）
 const int COLOR_FUNCTION = 11;  // 函数名颜色（蓝色）
-const int COLOR_VARIABLE = 9;   // 变量名颜色（青色）
+const int COLOR_VARIABLE = 13;   // 变量名颜色（青色）
+const int COLOR_ERROR = 4;      //红色
 const std::set<char> TOKEN_END{'(', ')', '\'', '`', ',', '"', ' ', ';'};
 void setConsoleColor(int color) {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -135,7 +143,67 @@ std::string code_complete(const std::string& expr) {
     }
     return ret;
 }
-bool highlight_line(const std::string& line, bool isStr = false) {
+struct bracket {
+    int place;
+    int row;
+    char ch;
+};
+bool hasMatchingBracket(const std::vector<std::string>& lines, int position,int row) {
+    std::vector<bracket> symbols;
+    bool isStr = false;
+    for (int j = 0; j < lines.size(); j++)
+    {
+        //处理注释和string的情况
+        auto& expr = lines[j];
+        for (int i = 0; i < expr.size(); i++) {
+            char ch = expr[i];
+            if (ch =='\"') {
+                isStr=!isStr;
+            } else if (isStr)
+                continue;
+            else if (ch ==';') {
+                break;
+            }
+            else if (ch == '(' || ch == ')') {
+                symbols.push_back(bracket{i,j,ch});
+            }
+        }
+    }
+    std::stack<bracket> bracketStack;
+    std::vector<bracket> wrong;
+    for (auto& i : symbols) {
+        if (i.ch == '(')
+            bracketStack.push(i);
+        else {
+            if (bracketStack.empty()) {
+                wrong.push_back(i);
+            } else {
+                bracketStack.pop();
+            }
+        }
+    }
+    while (!bracketStack.empty()) {
+        bracket temp = bracketStack.top();
+        bracketStack.pop();
+        if (temp.place == position&&temp.row==row) return false;
+    }
+    for (auto& i:wrong) {
+        if (i.place == position&&i.row==row) return false;
+    }
+    return true;
+}
+void outputBracket(const std::vector<std::string>& lines, int place,int row) {
+    if (hasMatchingBracket(lines, place,row)) {
+        setConsoleColor(COLOR_DEFAULT);
+        std::cout << lines[row][place];
+    }else {
+        setConsoleColor(COLOR_ERROR);
+        std::cout << lines[row][place];
+        setConsoleColor(COLOR_DEFAULT);
+    }
+}
+bool highlight_line(const std::vector< std::string>& lines,int row, bool isStr = false) {
+    const std::string& line = lines[row];
     bool isComment = false;
     for (int i = 0; i < line.size(); i++) {
         char ch = line[i];
@@ -159,7 +227,10 @@ bool highlight_line(const std::string& line, bool isStr = false) {
                 isComment = true;
                 setConsoleColor(COLOR_COMMENT);
                 std::cout << ch;
-            } else {
+            } else if (ch == ')' || ch == '(') {
+                outputBracket(lines,i,row);
+            } 
+            else {
                 setConsoleColor(COLOR_DEFAULT);
                 std::cout << ch;
             }
@@ -181,7 +252,9 @@ bool highlight_line(const std::string& line, bool isStr = false) {
     setConsoleColor(COLOR_DEFAULT);
     return isStr;
 }
-std::string highlight_last(const std::string& line, bool isStr = false) {
+std::string highlight_last(const std::vector<std::string>& lines, int row,
+                           bool isStr = false) {
+    const std::string& line = lines[row];
     bool isComment = false;
     for (int i = 0; i < line.size(); i++) {
         char ch = line[i];
@@ -205,7 +278,10 @@ std::string highlight_last(const std::string& line, bool isStr = false) {
                 isComment = true;
                 setConsoleColor(COLOR_COMMENT);
                 std::cout << ch;
-            } else {
+            } else if (ch == ')' || ch =='(') {
+                outputBracket(lines,i,row);
+            }
+            else {
                 setConsoleColor(COLOR_DEFAULT);
                 std::cout << ch;
             }
@@ -245,11 +321,11 @@ std::string outputall(const std::vector<std::string>& lines,bool is_valid=false)
         else
             std::cout << "...";
         if (i != lines.size() - 1)
-            isStr = highlight_line(lines[i], isStr);
+            isStr = highlight_line(lines,i, isStr);
         else if (!is_valid)
-            return highlight_last(lines[i], isStr);
+            return highlight_last(lines,i, isStr);
         else {
-            highlight_line(lines[i], isStr);
+            highlight_line(lines,i, isStr);
             return std::string();
         }
         std::cout << std::endl;
