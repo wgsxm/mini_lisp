@@ -55,12 +55,15 @@ void clearline(int length) {
     }
 }
 void clearall(const std::vector<std::string>& lines) {
+    setvbuf(stdout, NULL, _IOFBF, 4096);
     for (int i = 0; i < lines.size(); i++) {
         std::cout << '\r';
         for (int j = 0; j < 3 + lines[i].size()+10; j++) std::cout << ' ';
         if (i!=lines.size()-1)
         std::cout << '\n';
     }
+    fflush(stdout);
+    setvbuf(stdout, NULL, _IONBF, 4096);
 }
 const int COLOR_DEFAULT = 7;    // 默认颜色（白色）
 const int COLOR_KEYWORD = 9;    // 关键字颜色（洋红色）
@@ -374,7 +377,7 @@ bool to_complete(const std::string& line, int place) {
 }
     int main() {
    //RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4,Lv5,Lv5Extra,Lv6,Lv7,Lv7Lib,Sicp);
-
+      
     while (true) {
         try {
             CONSOLE_SCREEN_BUFFER_INFO ori;
@@ -503,7 +506,7 @@ bool to_complete(const std::string& line, int place) {
                                             cursorPosition.X++;
                                         }
                                     } else {
-                                        if (cursorPosition.X - 3 == line.size())
+                                        if (cursorPosition.X - 3 >= line.size())
                                             ;
                                         else {
                                             cursorPosition.X = line.size() + 3;
