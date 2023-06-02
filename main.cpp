@@ -108,7 +108,7 @@ void output_completion(const std::string& expr) {
     GetConsoleScreenBufferInfo(hConsole, &csbi);
     WORD currentAttributes = csbi.wAttributes;
     SetConsoleTextAttribute(hConsole, BACKGROUND_GREEN);
-    std::cout << expr << std::endl;
+    std::cout << expr;
     SetConsoleTextAttribute(hConsole, currentAttributes);
 }
 bool is_similar(const std::string& symbol, const std::string& expr) {
@@ -362,20 +362,25 @@ int find_next_par(const std::string& line, int place) {
     }
     return line.size()-place-1;
 }
+bool to_complete(const std::string& line, int place) {
+    int i;
+    for (i = line.size() - 1; i >= 0; i--) {
+        if (TOKEN_END.count(line[i])) {
+            return place > i;
+        }
+    }
+    if (i == -1) return true;
+    return false;
+}
     int main() {
    //RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4,Lv5,Lv5Extra,Lv6,Lv7,Lv7Lib,Sicp);
-    SetWindowLongPtrA(GetConsoleWindow(), GWL_STYLE,
-                      GetWindowLongPtrA(GetConsoleWindow(), GWL_STYLE) &
-                          ~WS_SIZEBOX & ~WS_MAXIMIZEBOX & ~WS_MINIMIZEBOX);
+
     while (true) {
         try {
             CONSOLE_SCREEN_BUFFER_INFO ori;
             GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ori);
             COORD firstline;
             firstline.Y = ori.dwCursorPosition.Y;
-            SetConsoleTextAttribute(
-                GetStdHandle(STD_OUTPUT_HANDLE),
-                FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
             std::cout << ">>>";
             //处理字符串
             int temp_line = 0;
@@ -481,9 +486,8 @@ int find_next_par(const std::string& line, int place) {
                 if (ch != 13)  //非回车
                 {
                     if (ch == 9)//tab
-                        
                     {
-                        if (completion.empty()) {
+                        if (temp_line!=lines.size()-1||completion.empty()||!to_complete(line,cursorPosition.X-3-1)) {
                             if (temp_line != 0)
                             {
                                 int space = find_next_par(lines[temp_line - 1],
@@ -498,9 +502,20 @@ int find_next_par(const std::string& line, int place) {
                                         for (int i = 0; i < space; i++) {
                                             cursorPosition.X++;
                                         }
+                                    } else {
+                                        if (cursorPosition.X - 3 == line.size())
+                                            ;
+                                        else {
+                                            cursorPosition.X = line.size() + 3;
+                                        }
+                                    }
+                            } else {
+                                if (cursorPosition.X - 3 == line.size())
+                                    ;
+                                else {
+                                    cursorPosition.X = line.size() + 3;
                                 }
-                            }
-                            
+                            }    
                         }
                         else {
                             cursorPosition.Y = firstline.Y + lines.size() - 1;
@@ -634,7 +649,7 @@ int find_next_par(const std::string& line, int place) {
                     }
                     temp_line++;
                     cursorPosition.Y++;
-                    cursorPosition.X = 3 + lines[temp_line].size();
+                    cursorPosition.X = 3;
                 }
                 firstline.X = 3 + lines[0].size();
                 SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
