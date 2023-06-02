@@ -43,17 +43,6 @@ bool ValidInput(const std::string& temp) {
     }
     return store.empty() && (!(quotes % 2));
 }
-void clearline(int length) {
-    for (int i = 0; i < length; i++) {
-        std::cout << char(8);
-    }
-    for (int i = 0; i < length; i++) {
-        std::cout << char(32);
-    }
-    for (int i = 0; i < length; i++) {
-        std::cout << char(8);
-    }
-}
 void clearall(const std::vector<std::string>& lines) {
     setvbuf(stdout, NULL, _IOFBF, 4096);
     for (int i = 0; i < lines.size(); i++) {
@@ -316,8 +305,6 @@ std::string outputall(const std::vector<std::string>& lines,bool is_valid=false)
     //输出所有
     bool isStr = false;
     for (int i = 0; i < lines.size(); i++) {
-        //先清除
-        clearline(lines[i].size() + 2 + 3);
         setConsoleColor(COLOR_DEFAULT);
         if (i == 0)
             std::cout << ">>>";
@@ -375,9 +362,18 @@ bool to_complete(const std::string& line, int place) {
     if (i == -1) return true;
     return false;
 }
+bool is_line_end(int place, const std::string& line) {
+    if (place == line.size()) return true;
+    if (place < 0 || place > line.size())
+        throw std::runtime_error("in-out error!");
+    for (int i = place; i < line.size(); i++) {
+        if (line[i] != ' ') return false;
+    }
+    return true;
+}
+
     int main() {
    //RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4,Lv5,Lv5Extra,Lv6,Lv7,Lv7Lib,Sicp);
-      
     while (true) {
         try {
             CONSOLE_SCREEN_BUFFER_INFO ori;
@@ -412,41 +408,61 @@ bool to_complete(const std::string& line, int place) {
                 SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
                                          firstline);
                 clearall(lines);
-                if (ch == 26 || ch == 23) exit(0);  // EOF
+                for (int i = 0; i < lines.size();i++) {
+                    if (i == temp_line) continue;
+                    int num = 0;
+                    for (int j = lines[i].size() - 1; j >= 0; j--) {
+                        if (lines[i][j] == ' ')
+                            num++;
+                        else
+                            break;
+                    }
+                    for (int j = 0; j < num; j++) lines[i].pop_back();
+                }
+                if (ch == 26 || ch == 3) {
+                    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
+                                             firstline);
+                    outputall(lines,true);
+                    if (ch == 26) {
+                        std::cout << std::endl;
+                        throw std::runtime_error("keyboard interrupt");
+                    }
+                    else
+                        exit(0);
+                }
                 if (ch == 0) {                      //输入F1等
-                    firstline.X = 3 + lines[0].size();
                     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
                                              firstline);
                     outputall(lines);
                     ch = _getch();
                     continue;
                 } else if (ch == -32) {  //输入方向,delete
-                    firstline.X = 3 + lines[0].size();
                     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
                                              firstline);
                     outputall(lines);
                     //右77 左75 下80 上72
                     ch = _getch();
                     if (ch == 77) {
-                        if (cursorPosition.X >= 3 + lines[temp_line].size())
-                            ;
+                        if (cursorPosition.X == 3 + lines[temp_line].size()) {
+                            if (temp_line + 1 < lines.size()) {
+                                temp_line++;
+                                cursorPosition.Y++;
+                                cursorPosition.X = 3;
+                            }
+                        }
                         else
                             cursorPosition.X++;
                     }
                     if (ch == 75) {
                         if (cursorPosition.X == 3) {
-                            if (lines[temp_line].empty()) {
                                 if (temp_line == 0)
                                     ;
-                                else {  //回到上一行
-                                    lines.erase(lines.begin() + temp_line);
-                                    clearline(3);
+                                else {  
                                     temp_line--;
                                     cursorPosition.X =
                                         3 + lines[temp_line].size();
                                     cursorPosition.Y--;
                                 }
-                            }
                         } else
                             cursorPosition.X--;
                     }
@@ -463,10 +479,6 @@ bool to_complete(const std::string& line, int place) {
                         if (temp_line == 0) {
                             ;
                         } else {
-                            if (line.empty() && temp_line == lines.size() - 1) {
-                                clearline(3);
-                                lines.erase(lines.begin() + temp_line);
-                            }
                             cursorPosition.Y--;
                             temp_line--;
                             if (cursorPosition.X > 3 + lines[temp_line].size())
@@ -477,7 +489,6 @@ bool to_complete(const std::string& line, int place) {
                                              cursorPosition);
                     continue;
                 } else if (ch < 0) {
-                    firstline.X = 3 + lines[0].size();
                     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
                                              firstline);
                     outputall(lines);
@@ -563,7 +574,9 @@ bool to_complete(const std::string& line, int place) {
                             ;
                         else {  //回到上一行
                             lines.erase(lines.begin() + temp_line);
-                            clearline(3);
+                            SetConsoleCursorPosition(
+                                GetStdHandle(STD_OUTPUT_HANDLE), firstline);
+                            clearall(lines);
                             temp_line--;
                             cursorPosition.X = 3 + lines[temp_line].size();
                             cursorPosition.Y--;
@@ -592,8 +605,8 @@ bool to_complete(const std::string& line, int place) {
                         if (!isstr) ret += " ";
                     }
                     if (ValidInput(ret) && temp_line == lines.size() - 1 &&
-                        cursorPosition.X == 3 + lines[temp_line].size()) {
-                        firstline.X = 3 + lines[0].size();
+                        is_line_end(cursorPosition.X-3,line))
+                     {
                         SetConsoleCursorPosition(
                             GetStdHandle(STD_OUTPUT_HANDLE), firstline);
                         outputall(lines,true);
@@ -614,18 +627,21 @@ bool to_complete(const std::string& line, int place) {
                     int temp_space = 3;  //控制缩进
                     if (lines.size() == temp_line + 1) {
                         if (cursorPosition.X ==
-                            3 + lines[temp_line].size())  //在中间行的最后
+                            3 + lines[temp_line].size())  //在最后行
                         {
                             lines.push_back(std::string());  //多一行
                         } else {
                             std::string temp;
-                            int len = lines[temp_line].size();
-                            for (int i = cursorPosition.X - 3;
-                                 i < lines[temp_line].size(); i++) {
-                                temp += lines[temp_line][i];
-                            }
-                            for (int i = cursorPosition.X - 3; i < len; i++) {
-                                lines[temp_line].pop_back();
+                            if (!is_line_end(cursorPosition.X-3,line)) {
+                                int len = lines[temp_line].size();
+                                for (int i = cursorPosition.X - 3;
+                                     i < lines[temp_line].size(); i++) {
+                                    temp += lines[temp_line][i];
+                                }
+                                for (int i = cursorPosition.X - 3; i < len;
+                                     i++) {
+                                    lines[temp_line].pop_back();
+                                }
                             }
                             //	std::cout << temp;
                             lines.push_back(std::string(temp));
@@ -638,13 +654,16 @@ bool to_complete(const std::string& line, int place) {
                                          std::string());  //多一行
                         } else {
                             std::string temp;
-                            int len = lines[temp_line].size();
-                            for (int i = cursorPosition.X - 3;
-                                 i < lines[temp_line].size(); i++) {
-                                temp += lines[temp_line][i];
-                            }
-                            for (int i = cursorPosition.X - 3; i < len; i++) {
-                                lines[temp_line].pop_back();
+                            if (!is_line_end(cursorPosition.X-3,line)) {
+                                int len = lines[temp_line].size();
+                                for (int i = cursorPosition.X - 3;
+                                     i < lines[temp_line].size(); i++) {
+                                    temp += lines[temp_line][i];
+                                }
+                                for (int i = cursorPosition.X - 3; i < len;
+                                     i++) {
+                                    lines[temp_line].pop_back();
+                                }
                             }
                             lines.insert(lines.begin() + temp_line + 1,
                                          std::string(temp));
@@ -654,7 +673,6 @@ bool to_complete(const std::string& line, int place) {
                     cursorPosition.Y++;
                     cursorPosition.X = 3;
                 }
-                firstline.X = 3 + lines[0].size();
                 SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
                                          firstline);
                 completion=outputall(lines);
