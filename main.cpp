@@ -50,17 +50,17 @@ void clearline(int length) {
 void clearall(const std::vector<std::string>& lines) {
     for (int i = 0; i < lines.size(); i++) {
         std::cout << '\r';
-        for (int j = 0; j < 3 + lines[i].size(); j++) std::cout << ' ';
+        for (int j = 0; j < 3 + lines[i].size()+10; j++) std::cout << ' ';
         if (i!=lines.size()-1)
         std::cout << '\n';
     }
 }
 const int COLOR_DEFAULT = 7;    // 默认颜色（白色）
-const int COLOR_KEYWORD = 5;    // 关键字颜色（紫色）
+const int COLOR_KEYWORD = 13;    // 关键字颜色（洋红色）
 const int COLOR_STRING = 10;    // 字符串颜色（绿色）
 const int COLOR_NUMBER = 6;     // 数字颜色（黄色）
 const int COLOR_COMMENT = 14;   // 注释颜色（亮黄色）
-const int COLOR_FUNCTION = 11;  // 函数名颜色（洋红色）
+const int COLOR_FUNCTION = 11;  // 函数名颜色（蓝色）
 const int COLOR_VARIABLE = 9;   // 变量名颜色（青色）
 const std::set<char> TOKEN_END{'(', ')', '\'', '`', ',', '"', ' ', ';'};
 void setConsoleColor(int color) {
@@ -92,8 +92,48 @@ int highlight_expr(const std::string& expr) {
     if (is_number_or_boolean(expr)) return COLOR_NUMBER;
     if (is_keyword(expr)) return COLOR_KEYWORD;
     if (is_function(expr)) return COLOR_FUNCTION;
-    if (is_variable(expr)) return COLOR_VARIABLE;
     return COLOR_DEFAULT;
+}
+void output_completion(const std::string& expr) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hConsole, &csbi);
+    WORD currentAttributes = csbi.wAttributes;
+    SetConsoleTextAttribute(hConsole, BACKGROUND_GREEN);
+    std::cout << expr << std::endl;
+    SetConsoleTextAttribute(hConsole, currentAttributes);
+}
+bool is_similar(const std::string& symbol, const std::string& expr) {
+    if (expr.size() > symbol.size()) return false;
+    double same = 0;
+    for (int i = 0; i < expr.size(); i++) {
+        if (expr[i] == symbol[i])
+            same += 1;
+        else
+            return false;
+        if (same / symbol.size() >= 0.5) return true;
+    }
+    return false;
+}
+std::string code_complete(const std::string& expr) {
+    std::vector<std::string> symbols;
+    std::string ret;
+    for (auto &i : env->getSymbol()) {
+        symbols.push_back(i);
+    }
+    for (auto& i : getForm()) {
+        symbols.push_back(i);
+    }
+    for (auto& symbol : symbols) {
+        if (is_similar(symbol,expr)) {
+            for (int i = expr.size(); i < symbol.size();i++) {
+                ret += symbol[i];
+            }
+            output_completion(ret);
+            break;
+        }
+    }
+    return ret;
 }
 bool highlight_line(const std::string& line, bool isStr = false) {
     bool isComment = false;
@@ -141,7 +181,59 @@ bool highlight_line(const std::string& line, bool isStr = false) {
     setConsoleColor(COLOR_DEFAULT);
     return isStr;
 }
-void outputall(const std::vector<std::string>& lines) {
+std::string highlight_last(const std::string& line, bool isStr = false) {
+    bool isComment = false;
+    for (int i = 0; i < line.size(); i++) {
+        char ch = line[i];
+        if (isStr) {
+            setConsoleColor(COLOR_STRING);
+            if (ch != '\"')
+                std::cout << ch;
+            else {
+                isStr = !isStr;
+                std::cout << ch;
+            }
+        } else if (isComment) {
+            setConsoleColor(COLOR_COMMENT);
+            std::cout << ch;
+        } else if (TOKEN_END.count(ch)) {
+            if (ch == '\"') {
+                isStr = !isStr;  //注意转义字符 to be added
+                setConsoleColor(COLOR_STRING);
+                std::cout << ch;
+            } else if (ch == ';') {
+                isComment = true;
+                setConsoleColor(COLOR_COMMENT);
+                std::cout << ch;
+            } else {
+                setConsoleColor(COLOR_DEFAULT);
+                std::cout << ch;
+            }
+        } else {
+            std::string temp;
+            int j;
+            for (j = i; j < line.size(); j++) {
+                temp += line[j];
+                if (TOKEN_END.count(line[j + 1])) {
+                    i = j;
+                    break;
+                }
+            }
+            setConsoleColor(highlight_expr(temp));
+            std::cout << temp;
+            if (j == line.size()) {
+                if ((!is_function(temp)) && (!is_variable(temp) )&& (!is_number_or_boolean(temp)))
+                {
+                    return code_complete(temp);
+                }
+                break;
+            }
+        }
+    }
+    setConsoleColor(COLOR_DEFAULT);
+    return std::string();
+}
+std::string outputall(const std::vector<std::string>& lines,bool is_valid=false) {
     //输出所有
     bool isStr = false;
     for (int i = 0; i < lines.size(); i++) {
@@ -152,14 +244,26 @@ void outputall(const std::vector<std::string>& lines) {
             std::cout << ">>>";
         else
             std::cout << "...";
-        isStr = highlight_line(lines[i], isStr);
-        if (i != lines.size() - 1) std::cout << std::endl;
+        if (i != lines.size() - 1)
+            isStr = highlight_line(lines[i], isStr);
+        else if (!is_valid)
+            return highlight_last(lines[i], isStr);
+        else {
+            highlight_line(lines[i], isStr);
+            return std::string();
+        }
+        std::cout << std::endl;
     }
 }
 bool isLastRow(int row) {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
     return row == csbi.dwSize.Y - 1;
+}
+bool isLineEnd(int column) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    return column == csbi.dwSize.X - 1;
 }
 int main() {
    //RJSJ_TEST(TestCtx, Lv2, Lv3,Lv4,Lv5,Lv5Extra,Lv6,Lv7,Lv7Lib,Sicp);
@@ -178,6 +282,7 @@ int main() {
             std::cout << ">>>";
             //处理字符串
             int temp_line = 0;
+            std::string completion;
             std::vector<std::string> lines;
             lines.push_back(std::string());
             while (true) {
@@ -192,6 +297,10 @@ int main() {
                 COORD cursorPosition;
                 cursorPosition.X = info.dwCursorPosition.X;
                 cursorPosition.Y = info.dwCursorPosition.Y;
+                if (isLineEnd(cursorPosition.X+1)) {
+                    std::cout << std::endl;
+                    throw std::runtime_error("input is too long");
+                }
                 std::string& line = lines[temp_line];
                 char ch = _getch();
                 firstline.X = 0;
@@ -274,8 +383,19 @@ int main() {
                 }
                 if (ch != 13)  //非回车
                 {
-                    if (ch == 9)
-                        ;
+                    if (ch == 9)//tab
+                        
+                    {
+                        if (completion.empty())
+                            ;
+                        else {
+                            cursorPosition.Y = firstline.Y + lines.size() - 1;
+                            lines[lines.size() - 1] += completion;
+                            temp_line = lines.size() - 1;
+                            cursorPosition.X =
+                                3 + lines[lines.size() - 1].size();
+                        }
+                    }
                     else if (ch != 8)  //不是退格
                     {
                         if (cursorPosition.X == 3 + lines[temp_line].size())
@@ -344,7 +464,7 @@ int main() {
                         firstline.X = 3 + lines[0].size();
                         SetConsoleCursorPosition(
                             GetStdHandle(STD_OUTPUT_HANDLE), firstline);
-                        outputall(lines);
+                        outputall(lines,true);
                         std::cout << std::endl;
                         bool cer = 1;
                         for (int i = 0; i < ret.size(); i++) {
@@ -405,7 +525,7 @@ int main() {
                 firstline.X = 3 + lines[0].size();
                 SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
                                          firstline);
-                outputall(lines);
+                completion=outputall(lines);
                 SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),
                                          cursorPosition);
             }

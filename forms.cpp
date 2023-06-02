@@ -1,5 +1,12 @@
 #include "forms.h"
-ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
+std::vector<std::string> getForm() {
+    std::vector<std::string> ret;
+    for (auto& i : SPECIAL_FORMS) {
+        ret.push_back(i.first);
+    }
+    return ret;
+}
+    ValuePtr lambdaForm(const std::vector<ValuePtr>& args, EvalEnv& env) {
     if (args.size() < 2)
         throw LispError("insufficient number of arguments");
     std::vector<std::string> str;

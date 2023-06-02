@@ -22,7 +22,14 @@ std::shared_ptr<EvalEnv> EvalEnv::createChild(
     }
     return env;
 }
-bool EvalEnv::isdefined(const std::string& expr) {
+std::vector<std::string> EvalEnv::getSymbol() {
+    std::vector<std::string> ret;
+    for (auto& i : SymbolMap) {
+        ret.push_back(i.first);
+    }
+    return ret;
+}
+    bool EvalEnv::isdefined(const std::string& expr) {
     if (SymbolMap.count(expr)) return true;
     else if (parent!=nullptr) {
         return parent->isdefined(expr);

@@ -13,6 +13,7 @@ private:
     EvalEnv();
     EvalEnv(std::shared_ptr<EvalEnv>);
     public:
+    std::vector<std::string> getSymbol();
     bool isdefined(const std::string& expr);
     static std::shared_ptr<EvalEnv> createGlobal();
     std::shared_ptr<EvalEnv> createChild(
